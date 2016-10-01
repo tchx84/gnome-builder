@@ -5,9 +5,6 @@
 %option yylineno
 %option nodefault
 
-%option header-file="tmpl-expr-scanner.h"
-%option outfile="tmpl-expr-scanner.c"
-
 %{
 # include "tmpl-error.h"
 # include "tmpl-expr-private.h"

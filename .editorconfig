@@ -39,3 +39,7 @@ tab_size = 4
 indent_size = 2
 tab_size = 2
 indent_style = space
+
+[meson.build]
+indent_size = 2
+indent_style = space

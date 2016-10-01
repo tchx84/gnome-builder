@@ -1,6 +1,22 @@
 DISTCLEANFILES =
 CLEANFILES =
-BUILT_SOURCES =
+
+BUILT_SOURCES = \
+	tmpl-expr-parser.c \
+	tmpl-expr-parser.h \
+	tmpl-expr-scanner.c \
+	tmpl-expr-scanner.h
+
+tmpl-expr-scanner.c tmpl-expr-scanner.h: tmpl-expr-scanner.l
+	$(AM_V_GEN)$(LEX) -o $@ $<
+
+tmpl-expr-scanner.h: tmpl-expr-scanner.c
+
+tmpl-expr-parser.c tmpl-expr-parser.h: tmpl-expr-parser.y tmpl-expr-scanner.h
+	$(AM_V_GEN)$(YACC) $< --defines=tmpl-expr-parser.h --output=$@
+
+tmpl-expr-parser.h: tmpl-expr-parser.c
+
 
 pkglib_LTLIBRARIES = libtemplate-glib-1.0.la
 
@@ -9,10 +25,7 @@ AM_CPPFLAGS = \
 	-DTMPL_GLIB_COMPILATION
 
 EXTRA_DIST = \
-	tmpl-expr-parser.c \
-	tmpl-expr-parser.h \
-	tmpl-expr-scanner.c \
-	tmpl-expr-scanner.h \
+	$(BUILT_SOURCES) \
 	$(NULL)
 
 pkgincludedir = $(includedir)/gnome-builder-@VERSION@/template-glib
@@ -41,9 +54,9 @@ libtemplate_glib_1_0_la_SOURCES = \
 	tmpl-expr-node.c \
 	tmpl-expr-node.h \
 	tmpl-expr-parser-private.h \
-	tmpl-expr-parser.y \
+	tmpl-expr-parser.c \
 	tmpl-expr-private.h \
-	tmpl-expr-scanner.l \
+	tmpl-expr-scanner.c \
 	tmpl-expr.c \
 	tmpl-gi-private.h \
 	tmpl-gi.c \

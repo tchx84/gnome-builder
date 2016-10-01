@@ -1,0 +1,6 @@
+{
+global:
+    ide_*;
+local:
+    *;
+};
