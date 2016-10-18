@@ -1,4 +1,4 @@
-EXTRA_DIST =
+EXTRA_DIST = meson.build
 
 egg_cflags = \
 	$(DEBUG_CFLAGS) \

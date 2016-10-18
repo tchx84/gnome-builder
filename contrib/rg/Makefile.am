@@ -38,4 +38,6 @@ librg_la_LDFLAGS = \
 	$(OPTIMIZE_LDFLAGS) \
 	$(NULL)
 
+EXTRA_DIST = meson.build rg.map
+
 -include $(top_srcdir)/git.mk

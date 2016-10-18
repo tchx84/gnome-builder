@@ -1,6 +1,6 @@
 if ENABLE_HTML_COMPLETION_PLUGIN
 
-EXTRA_DIST = $(plugin_DATA)
+EXTRA_DIST = $(plugin_DATA) meson.build
 
 plugindir = $(libdir)/gnome-builder/plugins
 plugin_LTLIBRARIES = libhtml-completion-plugin.la

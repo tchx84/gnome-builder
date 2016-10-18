@@ -15,6 +15,6 @@ gsettings_SCHEMAS = \
 
 @GSETTINGS_RULES@
 
-EXTRA_DIST = $(gsettings_SCHEMAS)
+EXTRA_DIST = $(gsettings_SCHEMAS) meson.build
 
 -include $(top_srcdir)/git.mk

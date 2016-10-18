@@ -3,7 +3,7 @@ if ENABLE_DEVHELP_PLUGIN
 DISTCLEANFILES =
 BUILT_SOURCES =
 CLEANFILES =
-EXTRA_DIST = $(plugin_DATA)
+EXTRA_DIST = $(plugin_DATA) meson.build
 
 plugindir = $(libdir)/gnome-builder/plugins
 plugin_LTLIBRARIES = libsupport-plugin.la

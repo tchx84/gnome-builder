@@ -101,4 +101,6 @@ check-local: $(GTKDOC_CHECK)
 
 endif
 
+EXTRA_DIST += meson.build xml/meson.build xml/tree_index.sgml xml/gtkdocentities.ent.in
+
 -include $(top_srcdir)/git.mk

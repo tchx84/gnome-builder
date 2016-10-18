@@ -1,6 +1,6 @@
 if ENABLE_QUICK_HIGHLIGHT_PLUGIN
 
-EXTRA_DIST = $(plugin_DATA)
+EXTRA_DIST = $(plugin_DATA) meson.build
 
 plugindir = $(libdir)/gnome-builder/plugins
 plugin_LTLIBRARIES = libquick-highlight-plugin.la

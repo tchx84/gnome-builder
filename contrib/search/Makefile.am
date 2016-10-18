@@ -22,4 +22,6 @@ libsearch_la_LDFLAGS = \
 	$(OPTIMIZE_LDFLAGS) \
 	$(NULL)
 
+EXTRA_DIST = meson.build
+
 -include $(top_srcdir)/git.mk

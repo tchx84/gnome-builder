@@ -1,7 +1,7 @@
 DISTCLEANFILES =
 CLEANFILES =
 BUILT_SOURCES =
-EXTRA_DIST =
+EXTRA_DIST = meson.build
 
 noinst_LTLIBRARIES = libgd.la
 

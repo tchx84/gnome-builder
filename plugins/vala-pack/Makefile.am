@@ -9,7 +9,7 @@ if ENABLE_VALA_PACK_PLUGIN
 # new .vala file to _VALASOURCES and the corresponding C file to
 # _SOURCES.
 
-EXTRA_DIST = $(plugin_DATA)
+EXTRA_DIST = $(plugin_DATA) meson.build
 
 plugindir = $(libdir)/gnome-builder/plugins
 plugin_LTLIBRARIES = libvala-pack-plugin.la

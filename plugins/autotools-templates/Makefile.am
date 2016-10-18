@@ -55,7 +55,7 @@ nobase_resource_DATA = \
 	autotools_templates/resources/src/package.vala \
 	$(NULL)
 
-EXTRA_DIST = $(nobase_resource_DATA)
+EXTRA_DIST = $(nobase_resource_DATA) meson.build
 
 endif
 

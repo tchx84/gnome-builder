@@ -16,4 +16,6 @@ GITIGNOREFILES = \
 	ylwrap \
 	$(NULL)
 
+EXTRA_DIST = meson
+
 -include $(top_srcdir)/git.mk

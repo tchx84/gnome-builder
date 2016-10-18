@@ -1,6 +1,6 @@
 if ENABLE_PYTHON_GI_IMPORTS_COMPLETION_PLUGIN
 
-EXTRA_DIST = $(plugin_DATA)
+EXTRA_DIST = $(plugin_DATA) meson.build
 
 plugindir = $(libdir)/gnome-builder/plugins
 dist_plugin_DATA = \

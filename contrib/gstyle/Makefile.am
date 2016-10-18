@@ -1,6 +1,6 @@
 CLEANFILES =
 DISTCLEANFILES =
-EXTRA_DIST =
+EXTRA_DIST = meson.build gstyle.map
 BUILT_SOURCES =
 
 SUBDIRS = . tests

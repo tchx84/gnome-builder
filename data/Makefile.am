@@ -37,6 +37,7 @@ EXTRA_DIST = \
 	$(appstream_in_files) \
 	$(desktop_in_in_files) \
 	$(service_in_files) \
+	meson.build \
 	$(NULL)
 
 CLEANFILES = \

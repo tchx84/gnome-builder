@@ -12,4 +12,6 @@ ide_list_counters_LDADD =                             \
 	$(SHM_LIB)                                    \
 	$(NULL)
 
+EXTRA_DIST = meson.build
+
 -include $(top_srcdir)/git.mk

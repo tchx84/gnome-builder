@@ -1,7 +1,10 @@
 CLEANFILES =
 DISTCLEANFILES =
 BUILT_SOURCES =
-EXTRA_DIST =
+EXTRA_DIST = \
+	meson.build \
+	resources/meson.build \
+	ide.map
 
 pkglibdir = $(libdir)/gnome-builder
 pkglib_LTLIBRARIES = libide-1.0.la

@@ -12,7 +12,7 @@ nobase_icon_DATA = \
 	hicolor/symbolic/apps/org.gnome.Builder-symbolic.svg \
 	$(NULL)
 
-EXTRA_DIST = $(nobase_icon_DATA)
+EXTRA_DIST = $(nobase_icon_DATA) meson.build
 
 gtk_update_icon_cache = gtk-update-icon-cache -f -t $(datadir)/icons/hicolor
 

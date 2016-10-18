@@ -1,5 +1,7 @@
 if ENABLE_AUTOTOOLS_PLUGIN
 
+EXTRA_DIST = meson.build
+
 plugindir = $(libdir)/gnome-builder/plugins
 plugin_LTLIBRARIES = libautotools-plugin.la
 dist_plugin_DATA = autotools.plugin

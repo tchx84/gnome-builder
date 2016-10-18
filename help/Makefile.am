@@ -15,4 +15,6 @@ HELP_FILES = \
 # Translated languages, blank means no translation exists yet
 HELP_LINGUAS = cs de el es hu pt_BR sv tr
 
+EXTRA_DIST = meson.build
+
 -include $(top_srcdir)/git.mk

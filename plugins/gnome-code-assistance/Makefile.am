@@ -29,7 +29,7 @@ gsettings_SCHEMAS = org.gnome.builder.gnome-code-assistance.gschema.xml
 
 @GSETTINGS_RULES@
 
-EXTRA_DIST = $(gsettings_SCHEMAS) $(plugin_DATA)
+EXTRA_DIST = $(gsettings_SCHEMAS) $(plugin_DATA) meson.build
 
 include $(top_srcdir)/plugins/Makefile.plugin
 

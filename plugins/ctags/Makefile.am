@@ -1,5 +1,7 @@
 if ENABLE_CTAGS_PLUGIN
 
+EXTRA_DIST = meson.build
+
 plugindir = $(libdir)/gnome-builder/plugins
 plugin_LTLIBRARIES = libctags-plugin.la
 dist_plugin_DATA = ctags.plugin

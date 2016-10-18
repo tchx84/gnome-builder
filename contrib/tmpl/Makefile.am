@@ -25,6 +25,9 @@ AM_CPPFLAGS = \
 	-DTMPL_GLIB_COMPILATION
 
 EXTRA_DIST = \
+	meson.build \
+	tmpl-expr-scanner.l \
+	tmpl-expr-parser.y \
 	$(BUILT_SOURCES) \
 	$(NULL)
 

@@ -1,6 +1,6 @@
 CLEANFILES =
 DISTCLEANFILES =
-EXTRA_DIST =
+EXTRA_DIST = meson.build
 BUILT_SOURCES =
 
 pkglibdir = $(libdir)/gnome-builder

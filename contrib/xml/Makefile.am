@@ -8,4 +8,6 @@ libxml_la_SOURCES = \
 libxml_la_CFLAGS = $(XML_CFLAGS)
 libxml_la_LIBADD = $(XML_LIBS)
 
+EXTRA_DIST = meson.build
+
 -include $(top_srcdir)/git.mk

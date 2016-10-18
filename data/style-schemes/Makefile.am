@@ -5,6 +5,6 @@ style_DATA = \
 	builder-dark.xml \
 	$(NULL)
 
-EXTRA_DIST = $(style_DATA)
+EXTRA_DIST = $(style_DATA) meson.build
 
 -include $(top_srcdir)/git.mk

@@ -3,6 +3,10 @@ SUBDIRS = . build contrib data libide src libidemm plugins tools po tests doc he
 ACLOCAL_AMFLAGS = -I build/autotools
 
 EXTRA_DIST = \
+	meson.build \
+	meson_options.txt \
+	config.h.meson \
+	po/meson.build \
 	AUTHORS \
 	$(NULL)
 

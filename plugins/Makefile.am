@@ -38,6 +38,6 @@ SUBDIRS = \
 	xml-pack \
 	$(NULL)
 
-EXTRA_DIST = Makefile.plugin
+EXTRA_DIST = Makefile.plugin meson.build plugins.map
 
 -include $(top_srcdir)/git.mk
