@@ -70,8 +70,9 @@ vala_pack_sources = [
 ]
 
 shared_library('vala-pack-plugin', vala_pack_sources,
-  dependencies: [
-    #libide_vapi,
+  dependencies: plugin_deps + [
+    libvala,
+    libide_vapi,
   ],
   vala_args: [
     '--pkg=posix',

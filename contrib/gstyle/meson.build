@@ -128,7 +128,7 @@ if get_option('with_introspection')
     'gstyle-xyz.c',
   ]
 
-  gnome.generate_gir(libgstyle,
+  libgstyle_gir = gnome.generate_gir(libgstyle,
     sources: libgstyle_introspection_sources,
     nsversion: '1.0',
     namespace: 'Gstyle',
@@ -142,6 +142,17 @@ if get_option('with_introspection')
       '--c-include=gstyle-private.h',
     ],
   )
+
+  if get_option('with_vapi')
+
+    libgstyle_vapi = gnome.generate_vapi('gstyle-private',
+      sources: libgstyle_gir[0],
+      packages: ['gio-2.0', 'gtk+-3.0', 'GtkSource-3.0'],
+      install: true,
+      install_dir: pkgvapidir,
+    )
+
+  endif
 
 endif
 
