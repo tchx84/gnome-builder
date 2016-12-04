@@ -49,26 +49,12 @@ gbp_devhelp_workbench_addin_init (GbpDevhelpWorkbenchAddin *self)
 }
 
 static void
-focus_devhelp_search (GSimpleAction *action,
-                      GVariant      *param,
-                      gpointer       user_data)
-{
-  GbpDevhelpWorkbenchAddin *self = user_data;
-
-  g_assert (GBP_IS_DEVHELP_WORKBENCH_ADDIN (self));
-
-  gbp_devhelp_panel_focus_search (self->panel, NULL);
-}
-
-static void
 gbp_devhelp_workbench_addin_load (IdeWorkbenchAddin *addin,
                                   IdeWorkbench      *workbench)
 {
   GbpDevhelpWorkbenchAddin *self = (GbpDevhelpWorkbenchAddin *)addin;
   IdePerspective *perspective;
   GtkWidget *pane;
-  GSimpleAction *action;
-  const gchar *focus_accel[] = { "<control><shift>f", NULL };
 
   g_assert (IDE_IS_WORKBENCH_ADDIN (self));
   g_assert (IDE_IS_WORKBENCH (workbench));
@@ -88,13 +74,6 @@ gbp_devhelp_workbench_addin_load (IdeWorkbenchAddin *addin,
                               "visible", TRUE,
                               NULL);
   gtk_container_add (GTK_CONTAINER (pane), GTK_WIDGET (self->panel));
-
-  action = g_simple_action_new ("focus-devhelp-search", NULL);
-  g_signal_connect_object (action, "activate", G_CALLBACK (focus_devhelp_search), self, 0);
-  g_action_map_add_action (G_ACTION_MAP (workbench), G_ACTION (action));
-
-  gtk_application_set_accels_for_action (GTK_APPLICATION (IDE_APPLICATION_DEFAULT),
-                                         "win.focus-devhelp-search", focus_accel);
 }
 
 static void
@@ -104,7 +83,6 @@ gbp_devhelp_workbench_addin_unload (IdeWorkbenchAddin *addin,
   GbpDevhelpWorkbenchAddin *self = (GbpDevhelpWorkbenchAddin *)addin;
   IdePerspective *perspective;
   GtkWidget *pane;
-  const gchar *empty_accels[1] = { NULL };
 
   g_assert (IDE_IS_WORKBENCH_ADDIN (self));
   g_assert (IDE_IS_WORKBENCH (workbench));
@@ -119,11 +97,6 @@ gbp_devhelp_workbench_addin_unload (IdeWorkbenchAddin *addin,
 
   gtk_widget_destroy (GTK_WIDGET (self->panel));
   self->panel = NULL;
-
-  g_action_map_remove_action (G_ACTION_MAP (workbench), "focus-devhelp-search");
-
-  gtk_application_set_accels_for_action (GTK_APPLICATION (IDE_APPLICATION_DEFAULT),
-                                         "win.focus-devhelp-search", empty_accels);
 }
 
 static void

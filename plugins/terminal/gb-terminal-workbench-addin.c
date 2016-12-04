@@ -50,10 +50,11 @@ G_DEFINE_TYPE_EXTENDED (GbTerminalWorkbenchAddin,
                         G_IMPLEMENT_INTERFACE (IDE_TYPE_WORKBENCH_ADDIN, workbench_addin_iface_init))
 
 static void
-new_terminal_activate_cb (GSimpleAction            *action,
-                          GVariant                 *param,
-                          GbTerminalWorkbenchAddin *self)
+new_terminal_activate_cb (GSimpleAction *action,
+                          GVariant      *param,
+                          gpointer       user_data)
 {
+  GbTerminalWorkbenchAddin *self = user_data;
   GbTerminalView *view;
   IdePerspective *perspective;
 
@@ -159,7 +160,9 @@ gb_terminal_workbench_addin_load (IdeWorkbenchAddin *addin,
   GtkWidget *bottom_pane;
   IdeContext *context;
   IdeRunManager *run_manager;
-  g_autoptr(GSimpleAction) action = NULL;
+  static const GActionEntry actions[] = {
+    { "new-terminal", new_terminal_activate_cb },
+  };
 
   g_assert (GB_IS_TERMINAL_WORKBENCH_ADDIN (self));
   g_assert (IDE_IS_WORKBENCH (workbench));
@@ -168,13 +171,7 @@ gb_terminal_workbench_addin_load (IdeWorkbenchAddin *addin,
 
   ide_set_weak_pointer (&self->workbench, workbench);
 
-  action = g_simple_action_new ("new-terminal", NULL);
-  g_signal_connect_object (action,
-                           "activate",
-                           G_CALLBACK (new_terminal_activate_cb),
-                           self,
-                           0);
-  g_action_map_add_action (G_ACTION_MAP (workbench), G_ACTION (action));
+  g_action_map_add_action_entries (G_ACTION_MAP (workbench), actions, G_N_ELEMENTS (actions), self);
 
   if (self->panel_terminal == NULL)
     {

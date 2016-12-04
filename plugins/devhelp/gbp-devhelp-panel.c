@@ -41,7 +41,13 @@ enum {
   LAST_PROP
 };
 
+enum {
+  FOCUS_SEARCH,
+  N_SIGNALS
+};
+
 static GParamSpec *properties [LAST_PROP];
+static guint signals [N_SIGNALS];
 
 static void
 gbp_devhelp_panel_find_view (GtkWidget *widget,
@@ -186,12 +192,38 @@ gbp_devhelp_panel_class_init (GbpDevhelpPanelClass *klass)
                          (G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_properties (object_class, LAST_PROP, properties);
+
+  signals [FOCUS_SEARCH] =
+    g_signal_new_class_handler ("focus-search",
+                                G_TYPE_FROM_CLASS (klass),
+                                G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
+                                G_CALLBACK (gbp_devhelp_panel_focus_search),
+                                NULL, NULL, NULL,
+                                G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void
 gbp_devhelp_panel_init (GbpDevhelpPanel *self)
 {
+  g_autoptr(IdeShortcutController) controller = NULL;
+
   g_object_set (self, "title", _("Documentation"), NULL);
+
+  controller = ide_shortcut_controller_new (GTK_WIDGET (self));
+
+  /*
+   * Register our commands which can be overriden easily by keythemes and by
+   * custom user overrides.
+   */
+  ide_shortcut_controller_add_command_signal (controller,
+                                              "org.gnome.builder.plugins.devhelp.focus-search",
+                                              "<primary><shift>f",
+                                              _("Documentation"),
+                                              _("Search documentation"),
+                                              NULL,
+                                              "focus-search",
+                                              1,
+                                              G_TYPE_STRING, NULL);
 }
 
 void
@@ -199,6 +231,8 @@ gbp_devhelp_panel_focus_search (GbpDevhelpPanel *self,
                                 const gchar     *keyword)
 {
   g_return_if_fail (GBP_IS_DEVHELP_PANEL (self));
+
+  ide_workbench_focus (NULL, GTK_WIDGET (self->sidebar));
 
   dh_sidebar_set_search_focus (self->sidebar);
 
