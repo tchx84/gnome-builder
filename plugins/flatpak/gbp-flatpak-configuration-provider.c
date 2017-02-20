@@ -43,22 +43,6 @@ struct _GbpFlatpakConfigurationProvider
   guint                    change_count;
 };
 
-typedef struct
-{
-  gchar          *app_id;
-  gchar          *branch;
-  gchar          *command;
-  gchar          *config_opts;
-  gchar         **finish_args;
-  gchar          *platform;
-  gchar          *prefix;
-  gchar          *primary_module;
-  gchar          *runtime_id;
-  gchar          *sdk;
-  GFile          *file;
-  IdeEnvironment *environment;
-} FlatpakManifest;
-
 static void configuration_provider_iface_init (IdeConfigurationProviderInterface *);
 
 G_DEFINE_TYPE_EXTENDED (GbpFlatpakConfigurationProvider, gbp_flatpak_configuration_provider, G_TYPE_OBJECT, 0,
@@ -600,90 +584,10 @@ contains_id (GPtrArray   *ar,
   return FALSE;
 }
 
-static void
-flatpak_manifest_free (void *data)
-{
-  FlatpakManifest *manifest = data;
-
-  g_free (manifest->app_id);
-  g_free (manifest->branch);
-  g_free (manifest->command);
-  g_free (manifest->config_opts);
-  g_free (manifest->platform);
-  g_free (manifest->prefix);
-  g_free (manifest->primary_module);
-  g_free (manifest->runtime_id);
-  g_free (manifest->sdk);
-  g_strfreev (manifest->finish_args);
-  g_clear_object (&manifest->environment);
-  g_clear_object (&manifest->file);
-  g_slice_free (FlatpakManifest, manifest);
-}
-
-JsonNode *
-guess_primary_module (JsonNode *modules_node,
-                      GFile    *directory)
-{
-  JsonArray *modules;
-  JsonNode *module;
-  JsonNode *parent;
-  g_autofree gchar *dir_name;
-
-  g_assert (G_IS_FILE (directory));
-
-  dir_name = g_file_get_basename (directory);
-  g_assert (!ide_str_empty0 (dir_name));
-  g_return_val_if_fail (JSON_NODE_HOLDS_ARRAY (modules_node), NULL);
-
-  /* TODO: Support module strings that refer to other files? */
-  modules = json_node_get_array (modules_node);
-  if (json_array_get_length (modules) == 1)
-    {
-      module = json_array_get_element (modules, 0);
-      if (JSON_NODE_HOLDS_OBJECT (module))
-        return module;
-    }
-  else
-    {
-      for (guint i = 0; i < json_array_get_length (modules); i++)
-        {
-          module = json_array_get_element (modules, i);
-          if (JSON_NODE_HOLDS_OBJECT (module))
-            {
-              const gchar *module_name;
-              module_name = json_object_get_string_member (json_node_get_object (module), "name");
-              if (g_strcmp0 (module_name, dir_name) == 0)
-                return module;
-              if (json_object_has_member (json_node_get_object (module), "modules"))
-                {
-                  JsonNode *nested_modules_node;
-                  JsonNode *nested_primary_module;
-                  nested_modules_node = json_object_get_member (json_node_get_object (module), "modules");
-                  nested_primary_module = guess_primary_module (nested_modules_node, directory);
-                  if (nested_primary_module != NULL)
-                    return nested_primary_module;
-                }
-            }
-        }
-        /* If none match, assume the last module in the list is the primary one */
-        parent = json_node_get_parent (modules_node);
-        if (JSON_NODE_HOLDS_OBJECT (parent) &&
-            json_node_get_parent (parent) == NULL &&
-            json_array_get_length (modules) > 0)
-          {
-            JsonNode *last_node;
-            last_node = json_array_get_element (modules, json_array_get_length (modules) - 1);
-            if (JSON_NODE_HOLDS_OBJECT (last_node))
-              return last_node;
-          }
-    }
-
-  return NULL;
-}
-
 static gboolean
 check_dir_for_manifests (GFile         *directory,
-                         GPtrArray     *manifests,
+                         GPtrArray     *configs,
+                         IdeContext    *context,
                          GCancellable  *cancellable,
                          GError       **error)
 {
@@ -702,27 +606,10 @@ check_dir_for_manifests (GFile         *directory,
     {
       GFileType file_type;
       g_autofree gchar *name = NULL;
-      g_autofree gchar *path = NULL;
-      const gchar *platform;
-      const gchar *branch;
-      const gchar *arch;
       g_autoptr(GRegex) filename_regex = NULL;
       g_autoptr(GMatchInfo) match_info = NULL;
-      g_autoptr(JsonParser) parser = NULL;
-      JsonNode *root_node = NULL;
-      JsonNode *app_id_node = NULL;
-      JsonNode *id_node = NULL;
-      JsonNode *runtime_node = NULL;
-      JsonNode *runtime_version_node = NULL;
-      JsonNode *sdk_node = NULL;
-      JsonNode *modules_node = NULL;
-      JsonNode *primary_module_node = NULL;
-      JsonNode *command_node = NULL;
-      JsonNode *finish_args_node = NULL;
-      JsonObject *root_object = NULL;
-      g_autoptr(GError) local_error = NULL;
       g_autoptr(GFile) file = NULL;
-      FlatpakManifest *manifest;
+      g_autoptr(GbpFlatpakConfiguration) possible_config = NULL;
 
       file_type = g_file_info_get_file_type (file_info);
       name = g_strdup (g_file_info_get_name (file_info));
@@ -737,7 +624,7 @@ check_dir_for_manifests (GFile         *directory,
         {
           if (g_strcmp0 (name, ".git") == 0 || g_strcmp0 (name, ".flatpak-builder") == 0)
             continue;
-          else if (!check_dir_for_manifests (file, manifests, cancellable, error))
+          else if (!check_dir_for_manifests (file, configs, context, cancellable, error))
             return FALSE;
           continue;
         }
@@ -750,166 +637,9 @@ check_dir_for_manifests (GFile         *directory,
       if (!g_match_info_matches (match_info))
         continue;
 
-      /* Check if the contents look like a flatpak manifest */
-      path = g_file_get_path (file);
-      parser = json_parser_new ();
-      json_parser_load_from_file (parser, path, &local_error);
-      if (local_error != NULL)
-        {
-          g_warning ("Error parsing potential flatpak manifest %s: %s", path, local_error->message);
-          continue;
-        }
-
-      root_node = json_parser_get_root (parser);
-      if (!JSON_NODE_HOLDS_OBJECT (root_node))
-        continue;
-
-      root_object = json_node_get_object (root_node);
-      app_id_node = json_object_get_member (root_object, "app-id");
-      id_node = json_object_get_member (root_object, "id");
-      runtime_node = json_object_get_member (root_object, "runtime");
-      runtime_version_node = json_object_get_member (root_object, "runtime-version");
-      sdk_node = json_object_get_member (root_object, "sdk");
-      modules_node = json_object_get_member (root_object, "modules");
-
-      if ((!JSON_NODE_HOLDS_VALUE (app_id_node) && !JSON_NODE_HOLDS_VALUE (id_node)) ||
-           !JSON_NODE_HOLDS_VALUE (runtime_node) ||
-           !JSON_NODE_HOLDS_VALUE (sdk_node) ||
-           !JSON_NODE_HOLDS_ARRAY (modules_node))
-        continue;
-
-      IDE_TRACE_MSG ("Discovered flatpak manifest at %s", path);
-
-      manifest = g_slice_new0 (FlatpakManifest);
-
-      manifest->file = g_steal_pointer (&file);
-
-      /**
-       * TODO: Currently we just support the build-options object that's global to the
-       * manifest, but modules can have their own build-options as well that override
-       * global ones, so we should consider supporting that. The main difficulty would
-       * be keeping track of each so they can be written back to the file properly when
-       * the user makes changes in the Builder interface.
-       */
-      if (json_object_has_member (root_object, "build-options") &&
-          JSON_NODE_HOLDS_OBJECT (json_object_get_member (root_object, "build-options")))
-        {
-          JsonObject *build_options = NULL;
-          IdeEnvironment *environment;
-
-          build_options = json_object_get_object_member (root_object, "build-options");
-
-          if (json_object_has_member (build_options, "prefix"))
-            {
-              const gchar *prefix;
-              prefix = json_object_get_string_member (build_options, "prefix");
-              if (prefix != NULL)
-                manifest->prefix = g_strdup (prefix);
-            }
-
-          environment = ide_environment_new ();
-          if (json_object_has_member (build_options, "cflags"))
-            {
-              const gchar *cflags;
-              cflags = json_object_get_string_member (build_options, "cflags");
-              if (cflags != NULL)
-                ide_environment_setenv (environment, "CFLAGS", cflags);
-            }
-          if (json_object_has_member (build_options, "cxxflags"))
-            {
-              const gchar *cxxflags;
-              cxxflags = json_object_get_string_member (build_options, "cxxflags");
-              if (cxxflags != NULL)
-                ide_environment_setenv (environment, "CXXFLAGS", cxxflags);
-            }
-          if (json_object_has_member (build_options, "env"))
-            {
-              JsonObject *env_vars;
-              env_vars = json_object_get_object_member (build_options, "env");
-              if (env_vars != NULL)
-                {
-                  g_autoptr(GList) env_list = NULL;
-                  GList *l;
-                  env_list = json_object_get_members (env_vars);
-                  for (l = env_list; l != NULL; l = l->next)
-                    {
-                      const gchar *env_name = (gchar *)l->data;
-                      const gchar *env_value = json_object_get_string_member (env_vars, env_name);
-                      if (!ide_str_empty0 (env_name) && !ide_str_empty0 (env_value))
-                        ide_environment_setenv (environment, env_name, env_value);
-                    }
-                }
-            }
-          manifest->environment = environment;
-        }
-
-      platform = json_node_get_string (runtime_node);
-      manifest->platform = g_strdup (platform);
-
-      if (!JSON_NODE_HOLDS_VALUE (runtime_version_node) || ide_str_empty0 (json_node_get_string (runtime_version_node)))
-        branch = "master";
-      else
-        branch = json_node_get_string (runtime_version_node);
-      manifest->branch = g_strdup (branch);
-
-      arch = flatpak_get_default_arch ();
-      manifest->runtime_id = g_strdup_printf ("flatpak:%s/%s/%s", platform, arch, branch);
-
-      manifest->sdk = json_node_dup_string (sdk_node);
-
-      command_node = json_object_get_member (root_object, "command");
-      if (JSON_NODE_HOLDS_VALUE (command_node))
-        manifest->command = json_node_dup_string (command_node);
-
-      finish_args_node = json_object_get_member (root_object, "finish-args");
-      if (JSON_NODE_HOLDS_ARRAY (finish_args_node))
-        {
-          JsonArray *finish_args_array;
-          GPtrArray *finish_args;
-          finish_args = g_ptr_array_new ();
-          finish_args_array = json_node_get_array (finish_args_node);
-          for (guint i = 0; i < json_array_get_length (finish_args_array); i++)
-            {
-              const gchar *arg = json_array_get_string_element (finish_args_array, i);
-              if (!ide_str_empty0 (arg))
-                g_ptr_array_add (finish_args, g_strdup (arg));
-            }
-          g_ptr_array_add (finish_args, NULL);
-          manifest->finish_args = (gchar **)g_ptr_array_free (finish_args, FALSE);
-        }
-
-      if (JSON_NODE_HOLDS_VALUE (app_id_node))
-        manifest->app_id = json_node_dup_string (app_id_node);
-      else
-        manifest->app_id = json_node_dup_string (id_node);
-
-      primary_module_node = guess_primary_module (modules_node, directory);
-      if (primary_module_node != NULL && JSON_NODE_HOLDS_OBJECT (primary_module_node))
-        {
-          JsonObject *primary_module_object = json_node_get_object (primary_module_node);
-          manifest->primary_module = g_strdup (json_object_get_string_member (primary_module_object, "name"));
-          if (json_object_has_member (primary_module_object, "config-opts"))
-            {
-              JsonArray *config_opts_array;
-              config_opts_array = json_object_get_array_member (primary_module_object, "config-opts");
-              if (config_opts_array != NULL)
-                {
-                  GPtrArray *config_opts_strv;
-                  config_opts_strv = g_ptr_array_new_with_free_func (g_free);
-                  for (guint i = 0; i < json_array_get_length (config_opts_array); i++)
-                    {
-                      const gchar *next_option;
-                      next_option = json_array_get_string_element (config_opts_array, i);
-                      g_ptr_array_add (config_opts_strv, g_strdup (next_option));
-                    }
-                  g_ptr_array_add (config_opts_strv, NULL);
-                  manifest->config_opts = g_strjoinv (" ", (gchar **)config_opts_strv->pdata);
-                  g_ptr_array_free (config_opts_strv, TRUE);
-                }
-            }
-        }
-
-      g_ptr_array_add (manifests, manifest);
+      possible_config = gbp_flatpak_configuration_load_from_file (file, context);
+      if (possible_config != NULL)
+        g_ptr_array_add (configs, g_steal_pointer (&possible_config));
     }
 
   return TRUE;
@@ -921,16 +651,18 @@ gbp_flatpak_configuration_provider_find_flatpak_manifests (GbpFlatpakConfigurati
                                                            GFile                           *directory,
                                                            GError                         **error)
 {
+  IdeContext *context;
   GPtrArray *ar;
 
   g_assert (GBP_IS_FLATPAK_CONFIGURATION_PROVIDER (self));
   g_assert (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_assert (G_IS_FILE (directory));
 
-  ar = g_ptr_array_new ();
-  g_ptr_array_set_free_func (ar, flatpak_manifest_free);
+  context = ide_object_get_context (IDE_OBJECT (self->manager));
 
-  if (!check_dir_for_manifests (directory, ar, cancellable, error))
+  ar = g_ptr_array_new_with_free_func (g_object_unref);
+
+  if (!check_dir_for_manifests (directory, ar, context, cancellable, error))
     {
       g_ptr_array_free (ar, TRUE);
       return NULL;
@@ -945,7 +677,7 @@ gbp_flatpak_configuration_provider_load_manifests (GbpFlatpakConfigurationProvid
                                                    GCancellable                     *cancellable,
                                                    GError                          **error)
 {
-  g_autoptr(GPtrArray) ar = NULL;
+  GPtrArray *ar;
   g_autoptr(GFileInfo) file_info = NULL;
   IdeContext *context;
   GFile *project_file;
@@ -981,67 +713,13 @@ gbp_flatpak_configuration_provider_load_manifests (GbpFlatpakConfigurationProvid
 
   for (guint i = 0; i < ar->len; i++)
     {
-      GbpFlatpakConfiguration *configuration;
-      FlatpakManifest *manifest = g_ptr_array_index (ar, i);
-      g_autofree gchar *filename = NULL;
-      g_autofree gchar *hash = NULL;
-      g_autofree gchar *id = NULL;
-      g_autofree gchar *manifest_data = NULL;
-      g_autofree gchar *path = NULL;
-      gsize manifest_data_len = 0;
+      GbpFlatpakConfiguration *configuration = g_ptr_array_index (ar, i);
 
-      path = g_file_get_path (manifest->file);
-
-      if (g_file_get_contents (path, &manifest_data, &manifest_data_len, NULL))
+      if (contains_id (configurations, ide_configuration_get_id (IDE_CONFIGURATION (configuration))))
         {
-          g_autoptr(GChecksum) checksum = NULL;
-
-          checksum = g_checksum_new (G_CHECKSUM_SHA1);
-          g_checksum_update (checksum, (const guint8 *)manifest_data, manifest_data_len);
-          hash = g_strdup (g_checksum_get_string (checksum));
+          g_object_unref (configuration);
+          continue;
         }
-
-      filename = g_file_get_basename (manifest->file);
-
-      if (hash != NULL)
-        id = g_strdup_printf ("%s@%s", filename, hash);
-      else
-        id = g_strdup (filename);
-
-      if (contains_id (configurations, id))
-        continue;
-
-      /**
-       * TODO: There are a few more fields in the manifests that Builder needs, but they
-       * are read when needed by the runtime. If we set up a file monitor to reload the
-       * configuration when it changes on disk, it might make more sense for those fields
-       * to be read and processed here so we're only parsing the manifest in one place.
-       *
-       * CJH: We probably want gbp_flatpak_configuration_load_from_file() or similar.
-       */
-      configuration = g_object_new (GBP_TYPE_FLATPAK_CONFIGURATION,
-                                    "app-id", manifest->app_id,
-                                    "branch", manifest->branch,
-                                    "context", context,
-                                    "display-name", filename,
-                                    "device-id", "local",
-                                    "id", id,
-                                    "manifest", manifest->file,
-                                    "platform", manifest->platform,
-                                    "prefix", (manifest->prefix != NULL ? manifest->prefix : "/app"),
-                                    "runtime-id", manifest->runtime_id,
-                                    "sdk", manifest->sdk,
-                                    NULL);
-      if (manifest->primary_module != NULL)
-        gbp_flatpak_configuration_set_primary_module (configuration, manifest->primary_module);
-      if (manifest->command != NULL)
-        gbp_flatpak_configuration_set_command (configuration, manifest->command);
-      if (manifest->finish_args != NULL)
-        gbp_flatpak_configuration_set_finish_args (configuration, (const gchar * const *)manifest->finish_args);
-      if (manifest->environment != NULL)
-        ide_configuration_set_environment (IDE_CONFIGURATION (configuration), manifest->environment);
-      if (manifest->config_opts != NULL)
-        ide_configuration_set_config_opts (IDE_CONFIGURATION (configuration), manifest->config_opts);
 
       g_signal_connect_object (configuration,
                                "changed",
@@ -1049,8 +727,10 @@ gbp_flatpak_configuration_provider_load_manifests (GbpFlatpakConfigurationProvid
                                self,
                                G_CONNECT_SWAPPED);
 
-      g_ptr_array_add (configurations, configuration);
+      g_ptr_array_add (configurations, IDE_CONFIGURATION (configuration));
     }
+
+  g_ptr_array_free (ar, FALSE);
 
   return TRUE;
 }
